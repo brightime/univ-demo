@@ -199,7 +199,7 @@ def init_gemini_model():
 
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash-lite",
+        model_name="gemini-2.0-flash-lite",
         system_instruction=build_system_prompt(),
         generation_config=genai.GenerationConfig(
             temperature=0.7,
