@@ -1,6 +1,6 @@
 # ============================================================
 # 必要なライブラリのインストール:
-#   pip install streamlit google-generativeai
+#   pip install streamlit google-genai
 #
 # 起動方法:
 #   streamlit run app.py
@@ -12,7 +12,8 @@
 
 import json
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # ──────────────────────────────────────────
 # 埋め込みシラバスデータ
@@ -184,9 +185,9 @@ st.caption("高校生のための授業ガイド｜あなたの興味・将来�
 st.divider()
 
 # ──────────────────────────────────────────
-# Gemini API の初期化（セッションステート方式）
+# Gemini API の初期化（新SDK: google-genai）
 # ──────────────────────────────────────────
-if "model" not in st.session_state:
+if "gemini_client" not in st.session_state:
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
     except Exception:
@@ -194,21 +195,16 @@ if "model" not in st.session_state:
         st.stop()
 
     try:
-        genai.configure(api_key=api_key)
-        st.session_state.model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash-lite",
+        st.session_state.gemini_client = genai.Client(api_key=api_key)
+        st.session_state.chat_config = types.GenerateContentConfig(
             system_instruction=build_system_prompt(),
-            generation_config=genai.GenerationConfig(
-                temperature=0.7,
-                top_p=0.95,
-                max_output_tokens=2048,
-            ),
+            temperature=0.7,
+            top_p=0.95,
+            max_output_tokens=2048,
         )
     except Exception as e:
-        st.error(f"⚠️ AIモデルの初期化に失敗しました。\n\n```\n{e}\n```")
+        st.error(f"⚠️ AIの初期化に失敗しました。\n\n```\n{e}\n```")
         st.stop()
-
-model = st.session_state.model
 
 # ──────────────────────────────────────────
 # セッションステートの初期化
@@ -217,7 +213,10 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "gemini_chat" not in st.session_state:
-    st.session_state.gemini_chat = model.start_chat(history=[])
+    st.session_state.gemini_chat = st.session_state.gemini_client.chats.create(
+        model="gemini-2.0-flash-lite",
+        config=st.session_state.chat_config,
+    )
 
 # ──────────────────────────────────────────
 # チャット履歴の描画
@@ -244,18 +243,12 @@ if user_input := st.chat_input("将来の夢や興味を教えてください（
     # Gemini へストリーミングリクエスト & 逐次表示
     with st.chat_message("assistant", avatar="🎓"):
         try:
-            stream = st.session_state.gemini_chat.send_message(
-                user_input,
-                stream=True,
-            )
-
-            # st.write_stream にジェネレータを渡すと文字が流れるように表示される
-            def chunk_generator(stream):
-                for chunk in stream:
+            def chunk_generator():
+                for chunk in st.session_state.gemini_chat.send_message_stream(user_input):
                     if chunk.text:
                         yield chunk.text
 
-            full_response = st.write_stream(chunk_generator(stream))
+            full_response = st.write_stream(chunk_generator())
 
         except Exception as e:
             full_response = f"エラーが発生しました。\n\n```\n{e}\n```"
@@ -297,5 +290,8 @@ with st.sidebar:
     st.divider()
     if st.button("会話をリセットする", use_container_width=True):
         st.session_state.messages = []
-        st.session_state.gemini_chat = model.start_chat(history=[])
+        st.session_state.gemini_chat = st.session_state.gemini_client.chats.create(
+            model="gemini-2.0-flash-lite",
+            config=st.session_state.chat_config,
+        )
         st.rerun()
