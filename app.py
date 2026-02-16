@@ -184,33 +184,31 @@ st.caption("高校生のための授業ガイド｜あなたの興味・将来�
 st.divider()
 
 # ──────────────────────────────────────────
-# Gemini API の初期化
+# Gemini API の初期化（セッションステート方式）
 # ──────────────────────────────────────────
-@st.cache_resource(show_spinner="AIメンターを起動しています...")
-def init_gemini_model():
+if "model" not in st.session_state:
     try:
         api_key = st.secrets["GEMINI_API_KEY"]
-    except KeyError:
-        st.error(
-            "⚠️ APIキーが見つかりません。\n\n"
-            "`.streamlit/secrets.toml` に `GEMINI_API_KEY = '...'` を追加してください。"
-        )
+    except Exception:
+        st.error("⚠️ APIキーが見つかりません。Streamlit Cloud の Secrets に GEMINI_API_KEY を設定してください。")
         st.stop()
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash-lite",
-        system_instruction=build_system_prompt(),
-        generation_config=genai.GenerationConfig(
-            temperature=0.7,
-            top_p=0.95,
-            max_output_tokens=2048,
-        ),
-    )
-    return model
+    try:
+        genai.configure(api_key=api_key)
+        st.session_state.model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-lite",
+            system_instruction=build_system_prompt(),
+            generation_config=genai.GenerationConfig(
+                temperature=0.7,
+                top_p=0.95,
+                max_output_tokens=2048,
+            ),
+        )
+    except Exception as e:
+        st.error(f"⚠️ AIモデルの初期化に失敗しました。\n\n```\n{e}\n```")
+        st.stop()
 
-
-model = init_gemini_model()
+model = st.session_state.model
 
 # ──────────────────────────────────────────
 # セッションステートの初期化
