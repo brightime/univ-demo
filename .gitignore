@@ -1,0 +1,11 @@
+# Streamlit シークレット（APIキーを含むため絶対にコミットしない）
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# macOS
+.DS_Store
