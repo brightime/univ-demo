@@ -214,7 +214,7 @@ if "messages" not in st.session_state:
 
 if "gemini_chat" not in st.session_state:
     st.session_state.gemini_chat = st.session_state.gemini_client.chats.create(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-flash-lite",
         config=st.session_state.chat_config,
     )
 
@@ -291,7 +291,7 @@ with st.sidebar:
     if st.button("会話をリセットする", use_container_width=True):
         st.session_state.messages = []
         st.session_state.gemini_chat = st.session_state.gemini_client.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-flash-lite",
             config=st.session_state.chat_config,
         )
         st.rerun()
